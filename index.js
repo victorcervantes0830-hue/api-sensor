@@ -4,22 +4,38 @@ const { createClient } = require("@supabase/supabase-js");
 const app = express();
 app.use(express.json());
 
-// 🔹 Credenciales Supabase
-const SUPABASE_URL = "https://vbaleegzadvmkrsmiijq.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiYWxlZWd6YWR2bWtyc21paWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1ODQwNTUsImV4cCI6MjA4NDE2MDA1NX0.KBIJrYMvLICSTyCQb2x2XpLu2tEamg3CO6OodJ-rz_I";
+// 🔐 Credenciales desde variables de entorno (OBLIGATORIO en Render)
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 🔹 Ruta para recibir datos del ESP32
+// 🔹 Ruta principal (prueba)
+app.get("/", (req, res) => {
+  res.send("API NAVECO funcionando correctamente 🌱");
+});
+
+// 🔹 Ruta para recibir datos del ESP32 / Postman
 app.post("/sensores", async (req, res) => {
   const { ph, turbidez, tds, temperatura } = req.body;
 
-  // Fecha automática separada
+  // 🔍 Validación básica
+  if (
+    ph === undefined ||
+    turbidez === undefined ||
+    tds === undefined ||
+    temperatura === undefined
+  ) {
+    return res.status(400).json({ error: "Datos incompletos" });
+  }
+
+  // 📅 Fecha automática separada
   const fecha = new Date();
   const dia = fecha.getDate();
   const anio = fecha.getFullYear();
   const mes = fecha.toLocaleString("es-ES", { month: "long" });
 
+  // 💾 Insertar en Supabase
   const { error } = await supabase
     .from("sensores")
     .insert([
@@ -35,20 +51,17 @@ app.post("/sensores", async (req, res) => {
     ]);
 
   if (error) {
-    console.error(error);
+    console.error("Error Supabase:", error);
     return res.status(500).json({ error: "Error guardando datos" });
   }
 
   res.json({ message: "Datos guardados correctamente 🚀" });
 });
 
-// Ruta de prueba
-app.get("/", (req, res) => {
-  res.send("API NAVECO funcionando correctamente 🌱");
-});
-
+// 🚀 Puerto dinámico (Render)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor activo en puerto ${PORT}`);
 });
+
 
