@@ -1,34 +1,54 @@
 const express = require("express");
-const app = express();
+const { createClient } = require("@supabase/supabase-js");
 
+const app = express();
 app.use(express.json());
 
-// 💾 Aquí guardamos los datos temporalmente en memoria
-let datosSensores = [];
+// 🔹 Credenciales Supabase
+const SUPABASE_URL = "https://vbaleegzadvmkrsmiijq.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiYWxlZWd6YWR2bWtyc21paWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1ODQwNTUsImV4cCI6MjA4NDE2MDA1NX0.KBIJrYMvLICSTyCQb2x2XpLu2tEamg3CO6OodJ-rz_I";
 
-// Ruta POST para sensores
-app.post("/sensores", (req, res) => {
-    console.log("Datos recibidos:", req.body);
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Guardamos los datos que llegan
-    datosSensores.push(req.body);
+// 🔹 Ruta para recibir datos del ESP32
+app.post("/sensores", async (req, res) => {
+  const { ph, turbidez, tds, temperatura } = req.body;
 
-    res.json({ message: "Datos recibidos correctamente" });
-});
+  // Fecha automática separada
+  const fecha = new Date();
+  const dia = fecha.getDate();
+  const anio = fecha.getFullYear();
+  const mes = fecha.toLocaleString("es-ES", { month: "long" });
 
-// Ruta GET para que Power BI consulte los datos
-app.get("/sensores", (req, res) => {
-    res.json(datosSensores);
+  const { error } = await supabase
+    .from("sensores")
+    .insert([
+      {
+        ph,
+        turbidez,
+        tds,
+        temperatura,
+        dia,
+        mes,
+        anio
+      }
+    ]);
+
+  if (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Error guardando datos" });
+  }
+
+  res.json({ message: "Datos guardados correctamente 🚀" });
 });
 
 // Ruta de prueba
 app.get("/", (req, res) => {
-    res.send("API de sensores funcionando correctamente 🚀");
+  res.send("API NAVECO funcionando correctamente 🌱");
 });
 
-// Puerto dinámico para Railway/Render
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
-    console.log(`API funcionando en http://localhost:${PORT}`);
+  console.log(`Servidor activo en puerto ${PORT}`);
 });
+
