@@ -4,64 +4,55 @@ const { createClient } = require("@supabase/supabase-js");
 const app = express();
 app.use(express.json());
 
-// 🔐 Credenciales desde variables de entorno (OBLIGATORIO en Render)
+// Variables de entorno (Render)
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("❌ Variables de entorno no definidas");
+  process.exit(1);
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 🔹 Ruta principal (prueba)
-app.get("/", (req, res) => {
-  res.send("API NAVECO funcionando correctamente 🌱");
-});
-
-// 🔹 Ruta para recibir datos del ESP32 / Postman
+// Ruta POST sensores
 app.post("/sensores", async (req, res) => {
-  const { ph, turbidez, tds, temperatura } = req.body;
+  try {
+    const { ph, turbidez, tds, temperatura } = req.body;
 
-  // 🔍 Validación básica
-  if (
-    ph === undefined ||
-    turbidez === undefined ||
-    tds === undefined ||
-    temperatura === undefined
-  ) {
-    return res.status(400).json({ error: "Datos incompletos" });
+    if (ph == null || turbidez == null || tds == null || temperatura == null) {
+      return res.status(400).json({ error: "Datos incompletos" });
+    }
+
+    const fecha = new Date();
+    const dia = fecha.getDate();
+    const anio = fecha.getFullYear();
+    const mes = fecha.toLocaleString("es-ES", { month: "long" });
+
+    const { error } = await supabase
+      .from("sensores")
+      .insert([{ ph, turbidez, tds, temperatura, dia, mes, anio }]);
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Error en Supabase" });
+    }
+
+    res.json({ message: "Datos guardados correctamente 🌱" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error interno" });
   }
-
-  // 📅 Fecha automática separada
-  const fecha = new Date();
-  const dia = fecha.getDate();
-  const anio = fecha.getFullYear();
-  const mes = fecha.toLocaleString("es-ES", { month: "long" });
-
-  // 💾 Insertar en Supabase
-  const { error } = await supabase
-    .from("sensores")
-    .insert([
-      {
-        ph,
-        turbidez,
-        tds,
-        temperatura,
-        dia,
-        mes,
-        anio
-      }
-    ]);
-
-  if (error) {
-    console.error("Error Supabase:", error);
-    return res.status(500).json({ error: "Error guardando datos" });
-  }
-
-  res.json({ message: "Datos guardados correctamente 🚀" });
 });
 
-// 🚀 Puerto dinámico (Render)
+// Ruta prueba
+app.get("/", (req, res) => {
+  res.send("API NAVECO funcionando correctamente 🚀");
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor activo en puerto ${PORT}`);
 });
-
 
